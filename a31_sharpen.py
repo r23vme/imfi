@@ -13,15 +13,31 @@ class DTO:
     img_in: Image = None
     img_out: Image = None
     # sharpening
-    sharp_kernel: float = None  # [0, 25.5]
+    sharp_kernel: float = None  # >1
+    detail: int = None  # [0,200]
 
 
 def sharpen(dto: DTO) -> DTO:
     ocv_img = pil_to_ocv(dto.img_in)  # convert
 
     # do the thing
-    kernel = np.array([[-1, -1, -1], [-1, dto.sharp_kernel, -1], [-1, -1, -1]])
+    kernel = np.array(
+        [
+            [-dto.sharp_kernel, -dto.sharp_kernel, -dto.sharp_kernel],
+            [-dto.sharp_kernel, 1 + dto.sharp_kernel * 8, -dto.sharp_kernel],
+            [-dto.sharp_kernel, -dto.sharp_kernel, -dto.sharp_kernel],
+        ]
+    )
     res = cv.filter2D(ocv_img, -1, kernel)
+
+    dto.img_out = ocv_to_pil(res)  # convert back
+    return dto
+
+
+def detail_enhance(dto: DTO) -> DTO:
+    ocv_img = pil_to_ocv(dto.img_in)  # convert
+
+    res = cv.detailEnhance(ocv_img, None, dto.detail)
 
     dto.img_out = ocv_to_pil(res)  # convert back
     return dto
@@ -49,13 +65,17 @@ if __name__ == "__main__":
         win_name = "Trackbars"
         cv.namedWindow(win_name)
         cv.resizeWindow(win_name, 500, 100)
-        cv.createTrackbar("kernel", win_name, 900, 2550, empty)
+        cv.createTrackbar("kernel", win_name, 1, 1000, empty)
         cv.setTrackbarMin("kernel", win_name, 0)
+        cv.createTrackbar("detail", win_name, 0, 200, empty)
         dto = DTO
         dto.img_in = img
         while True:
             dto.sharp_kernel = cv.getTrackbarPos("kernel", win_name) / 100
-            res_dto = sharpen(dto)
+            dto.detail = cv.getTrackbarPos("detail", win_name)
+
+            # res_dto = sharpen(dto)
+            res_dto = detail_enhance(dto)
 
             ocv_img = pil_to_ocv(res_dto.img_out)
 
