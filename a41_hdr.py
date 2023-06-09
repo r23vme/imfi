@@ -4,6 +4,8 @@ A41
         Получение изображений с высоким динамическим диапазоном (HDR)
 
 https://github.com/opencv/opencv/blob/3.4/samples/python/tutorial_code/photo/hdr_imaging/hdr_imaging.py
+
+Merten - is the way! Debevec & Robertson provide worse result at greater computational cost.
 """
 
 import os
@@ -17,15 +19,28 @@ class DTO:
     img_in_list: List[any] = None
     img_out: Image = None
     # hdr
+    method: int = None  # [0,1,2] for [merten, debevec, robertson]
     exposures = None  # list of exposures
+    gamma: float = None
 
 
 def hdr(dto: DTO) -> DTO:
     ocv_imgs = [pil_to_ocv(img) for img in dto.img_in_list]  # convert
 
     # do the thing
-    merge_mertens = cv.createMergeMertens()
-    res = merge_mertens.process(ocv_imgs)
+    if dto.method == 0:
+        merge_mertens = cv.createMergeMertens()
+        res = merge_mertens.process(ocv_imgs)
+    elif dto.method == 1:
+        merge_debevec = cv.createMergeDebevec()
+        hdr_debevec = merge_debevec.process(ocv_imgs, dto.exposures)
+        tonemap = cv.createTonemap(gamma=dto.gamma)
+        res = tonemap.process(hdr_debevec)
+    elif dto.method == 2:
+        merge_robertson = cv.createMergeRobertson()
+        hdr_robertson = merge_robertson.process(ocv_imgs, times=dto.exposures)
+        tonemap = cv.createTonemap(gamma=dto.gamma)
+        res = tonemap.process(hdr_robertson)
 
     dto.img_out = ocv_to_pil(res)  # convert back
     return dto
@@ -33,6 +48,8 @@ def hdr(dto: DTO) -> DTO:
 
 # Helper: Convert img from OpenCV to PIL.Image
 def ocv_to_pil(img: np.array) -> Image:
+    # img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+    # return Image.fromarray(img)
     img = cv.normalize(img, None, 255, 0, cv.NORM_MINMAX, cv.CV_8U)
     img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
     img = Image.fromarray(np.uint8(img))
@@ -73,7 +90,13 @@ if __name__ == "__main__":
 
         # dto.img_in = img
 
+        cv.createTrackbar("method", win_name, 0, 2, empty)
+        cv.createTrackbar("gamma", win_name, 50, 100, empty)
+
         while True:
+            dto.method = cv.getTrackbarPos("method", win_name)
+            dto.gamma = cv.getTrackbarPos("gamma", win_name) / 10
+
             res_dto = hdr(dto)
 
             ocv_img = pil_to_ocv(res_dto.img_out)
