@@ -213,10 +213,10 @@ if __name__ == "__main__":
         "009.png",
         "010.png",
     ]
-    images = [Image.open(img) for img in image_files]
+    images = [Image.open("imgs/multicontrast/" + img) for img in image_files]
     res_dto = show(images)
 
     # convert
     ocv_img = pil_to_ocv(res_dto.img_out)
 
-    cv.imwrite("multicontrast_img_out.jpg", ocv_img)
+    cv.imwrite("imgs/multicontrast/011_multicontrast_img_out.jpg", ocv_img)
